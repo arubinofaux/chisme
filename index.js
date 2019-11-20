@@ -13,31 +13,33 @@ app.use(bodyParser.json())
 app.post('/push', function (req, res) {
   if (req.body.data_type == "alpr_results") {
     let data = req.body
-    let results = data.results[0]
+    let results = data.results[0]    
 
     Plate.findOne({ where: { number: results.plate } }).then(plate => {
       if (plate) {
-        Seen.create({
-          uuid: data.uuid,
-          confidence: results.confidence,
-          processing_time_ms: results.processing_time_ms,
-          PlateId: plate.get('id')
-        })
+        if (results.confidence > 89) {
+          Seen.create({
+            uuid: data.uuid,
+            confidence: results.confidence,
+            processing_time_ms: results.processing_time_ms,
+            PlateId: plate.get('id')
+          })
+        }
       } else {
-        
-        Plate.create({
-          number: results.plate,
-          seens: [
-            {
-              uuid: data.uuid,
-              confidence: results.confidence,
-              processing_time_ms: results.processing_time_ms
-            }
-          ]
-        }, {
-          include: [{model: Seen, as: 'seens'}]
-        });
-
+        if (results.confidence > 89) {
+          Plate.create({
+            number: results.plate,
+            seens: [
+              {
+                uuid: data.uuid,
+                confidence: results.confidence,
+                processing_time_ms: results.processing_time_ms
+              }
+            ]
+          }, {
+            include: [{model: Seen, as: 'seens'}]
+          });
+        }
       }
     })
   }
