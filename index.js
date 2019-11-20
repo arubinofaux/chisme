@@ -1,9 +1,11 @@
+const models = require('./models');
 const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const app = express()
 
-const models = require('./models');
+const Plate = models.Plate
+const Seen = models.Seen
 
 app.use(morgan('combined'))
 app.use(bodyParser.json())
@@ -13,11 +15,31 @@ app.post('/push', function (req, res) {
     let data = req.body
     let results = data.results[0]
 
-    console.log(data.uuid);
-    
-    console.log(results.plate);
-    console.log(results.confidence);
-    console.log(results.processing_time_ms);
+    Plate.findOne({ where: { number: results.plate } }).then(plate => {
+      if (plate) {
+        Seen.create({
+          uuid: data.uuid,
+          confidence: results.confidence,
+          processing_time_ms: results.processing_time_ms,
+          PlateId: plate.get('id')
+        })
+      } else {
+        
+        Plate.create({
+          number: results.plate,
+          seens: [
+            {
+              uuid: data.uuid,
+              confidence: results.confidence,
+              processing_time_ms: results.processing_time_ms
+            }
+          ]
+        }, {
+          include: [{model: Seen, as: 'seens'}]
+        });
+
+      }
+    })
   }
   
   res.json({ status: 'chill' })
